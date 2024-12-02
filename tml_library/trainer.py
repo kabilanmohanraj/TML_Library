@@ -19,7 +19,7 @@ class Trainer:
         grid_search = GridSearchCV(estimator=self.model, param_grid=self.param_grid, cv=self.cv, scoring=self.scoring)
         grid_search.fit(X_train, y_train)
         self.best_model = grid_search.best_estimator_
-        print(f"Best parameters found: {grid_search.best_params_}")
+        # print(f"Best parameters found: {grid_search.best_params_}")
         return self.best_model
 
     def save_model(self, filepath):
