@@ -1,15 +1,19 @@
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
+
 import json
+import logging
 from pathlib import Path
-from tml_library.utils import initialize_train_pipeline
+import threading
+
+from tml_library.utils import initialize_train_pipeline, setup_logger
 from tml_library.trainer import Trainer
 from tml_library.evaluator import Evaluator
 
-class MLPipelineGUI(Gtk.Window):
+class TMLPipelineGUI(Gtk.Window):
     def __init__(self):
-        super().__init__(title="ML Pipeline GUI")
+        super().__init__(title="TML Pipeline GUI")
         self.set_border_width(10)
         self.set_default_size(600, 400)
 
@@ -67,6 +71,10 @@ class MLPipelineGUI(Gtk.Window):
         self.output_view.set_wrap_mode(Gtk.WrapMode.WORD)
         vbox.pack_start(Gtk.ScrolledWindow(child=self.output_view), True, True, 0)
 
+    def append_output(self, message):
+        buffer = self.output_view.get_buffer()
+        buffer.insert(buffer.get_end_iter(), f"{message}\n{'-'*50}\n")
+        
     def create_file_filter(self, name, pattern):
         file_filter = Gtk.FileFilter()
         file_filter.set_name(name)
@@ -88,44 +96,46 @@ class MLPipelineGUI(Gtk.Window):
             "target_column": self.target_combo.get_active_text(),
             "log_file": self.log_entry.get_text(),
             "model_name": self.model_combo.get_active_text(),
-            "model_params": {}  # Extend this to include dynamic model parameter entry if required
+            "model_params": {} # model specific parameters
         }
 
+        # Running the pipeline in a separate thread
+        pipeline_thread = threading.Thread(target=self.run_pipeline, args=(config,))
+        pipeline_thread.start()
+    
+    def run_pipeline(self, config):
         try:
             # Save temporary config file
             config_path = Path("temp_config.json")
             with open(config_path, "w") as f:
                 json.dump(config, f, indent=4)
-            self.append_output(f"Configuration saved: {config}")
+            GLib.idle_add(self.append_output, f"Configuration saved:\n{json.dumps(config, indent=4)}")
+            
+            # Set up logger
+            logger = setup_logger(config["log_file"], self.output_view)
 
             # Run pipeline
-            self.append_output("Initializing pipeline...")
-            X_train, y_train, model, param_grid, logger = initialize_train_pipeline(config_path)
+            GLib.idle_add(self.append_output, "Initializing pipeline...")
+            X_train, X_test, y_train, y_test, model, param_grid = initialize_train_pipeline(config_path)
 
             # Train model
-            self.append_output("Training model...")
+            GLib.idle_add(self.append_output, "Training model...")
             trainer = Trainer(model, param_grid)
             best_model = trainer.train(X_train, y_train)
             trainer.save_model("best_model.joblib")
-            self.append_output("Model training complete. Model saved as 'best_model.joblib'.")
+            GLib.idle_add(self.append_output, "Model training complete. Model saved as 'best_model.joblib'.")
 
-            # # Evaluate model
-            # self.append_output("Evaluating model...")
-            # evaluator = Evaluator(best_model)
-            # metrics = evaluator.evaluate(X_test, y_test)
-            # self.append_output(f"Evaluation Metrics:\n{metrics}")
+            # Evaluate model
+            GLib.idle_add(self.append_output, "Evaluating model...")
+            evaluator = Evaluator(best_model)
+            metrics = evaluator.evaluate(X_test, y_test)
+            logger.info(f"Evaluation Metrics:\n{json.dumps(metrics, indent=4)}")
 
         except Exception as e:
-            self.append_output(f"Error: {str(e)}")
-
-    def append_output(self, message):
-        buffer = self.output_view.get_buffer()
-        end_iter = buffer.get_end_iter()
-        buffer.insert(end_iter, message + "\n")
-
+            GLib.idle_add(self.append_output, f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    win = MLPipelineGUI()
+    win = TMLPipelineGUI()
     win.connect("destroy", Gtk.main_quit)
     win.show_all()
     Gtk.main()
