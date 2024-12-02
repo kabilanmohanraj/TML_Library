@@ -14,12 +14,19 @@ class Evaluator:
         """
         y_pred = self.model.predict(X_test)
         y_pred_proba = self.model.predict_proba(X_test)[:, 1]  # For ROC AUC and curve
+        
+        print(y_test.dtype)
+
+        if isinstance(y_test.iloc[0], str):
+            pos_label = "Tumor"
+        else:
+            pos_label = 1.0
 
         metrics = {
             "accuracy": accuracy_score(y_test, y_pred),
-            "precision": precision_score(y_test, y_pred, average="binary"),
-            "recall": recall_score(y_test, y_pred, average="binary"),
-            "f1_score": f1_score(y_test, y_pred, average="binary"),
+            "precision": precision_score(y_test, y_pred, pos_label=pos_label),
+            "recall": recall_score(y_test, y_pred, pos_label=pos_label),
+            "f1_score": f1_score(y_test, y_pred, pos_label=pos_label),
             "roc_auc": roc_auc_score(y_test, y_pred_proba)
         }
         
