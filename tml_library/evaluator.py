@@ -14,9 +14,8 @@ class Evaluator:
         """
         y_pred = self.model.predict(X_test)
         y_pred_proba = self.model.predict_proba(X_test)[:, 1]  # For ROC AUC and curve
-        
-        print(y_test.dtype)
 
+        # Accounts for datatypes of target column
         if isinstance(y_test.iloc[0], str):
             pos_label = "Tumor"
         else:
