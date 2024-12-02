@@ -1,0 +1,8 @@
+{
+    "data_path": "/Users/kabilanmohanraj/Desktop/TML/data/Tan_data-2/Prostate1.txt",
+    "target_column": "0",
+    "log_file": "train.log",
+    "model_name": "SVC",
+    "model_params": {}
+}
+  
