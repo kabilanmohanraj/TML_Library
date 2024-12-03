@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 
 import json
 import logging
+import pickle
 
 from tml_library.feature_selection import FeatureSelector
 
@@ -30,22 +31,23 @@ def setup_logger(log_file, textview):
     logger = logging.getLogger('TMLPipelineLogger')
     logger.setLevel(logging.INFO)
 
-    # File handler
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.INFO)
+    if not logger.handlers:
+        # File handler
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
 
-    # Formatter
-    formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s')
-    file_handler.setFormatter(formatter)
+        # Formatter
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(name)s] - %(message)s')
+        file_handler.setFormatter(formatter)
 
-    # TextView handler
-    textview_handler = TextViewHandler(textview)
-    textview_handler.setLevel(logging.INFO)
-    textview_handler.setFormatter(formatter)
+        # TextView handler
+        textview_handler = TextViewHandler(textview)
+        textview_handler.setLevel(logging.INFO)
+        textview_handler.setFormatter(formatter)
 
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(textview_handler)
+        # Add handlers to logger
+        logger.addHandler(file_handler)
+        logger.addHandler(textview_handler)
 
     return logger
 
@@ -64,11 +66,17 @@ def initialize_train_pipeline(config_path="config.json", test_size=0.2, random_s
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     
+    # pd.DataFrame.to_csv(X_test.iloc[:, 1:], './artifacts/X_test.csv')
     # Initialize feature selector and perform feature selection
     feature_selector = FeatureSelector(n_estimators=1000, random_state=random_state)
     feature_selector.fit(X_train, y_train)
     X_train_selected = feature_selector.transform(X_train)
     X_test_selected = feature_selector.transform(X_test)
+    
+    # Save the feature selector object
+    feature_selector_path = "./artifacts/feature_selector.pkl"
+    with open(feature_selector_path, "wb") as f:
+        pickle.dump(feature_selector, f)
     
     # Plot top N features
     # feature_selector.plot_feature_importance(feature_names=X.columns, top_n=10)
